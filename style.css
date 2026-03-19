@@ -220,9 +220,122 @@ footer a {
 
 footer a:hover { text-decoration: underline; }
 
+.chain-nav-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    font-size: 0.85rem;
+}
+
+.breadcrumb-item {
+    color: var(--text-dim);
+    cursor: pointer;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    transition: color 0.15s, background 0.15s;
+}
+
+.breadcrumb-item:hover {
+    color: var(--accent);
+    background: rgba(110, 231, 183, 0.08);
+}
+
+.breadcrumb-item.active {
+    color: var(--accent);
+    font-weight: 600;
+    cursor: default;
+}
+
+.breadcrumb-item.active:hover {
+    background: none;
+}
+
+.breadcrumb-sep {
+    color: var(--text-dim);
+    margin: 0 0.15rem;
+}
+
+.clickable-hash {
+    color: var(--accent);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 0.85em;
+    border-bottom: 1px dashed var(--accent-dim);
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.clickable-hash:hover {
+    color: #a7f3d0;
+    border-bottom-color: var(--accent);
+}
+
+.lattice-tree {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.chain-tree-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.75rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    transition: border-color 0.15s;
+}
+
+.chain-tree-item:hover {
+    border-color: var(--accent-dim);
+}
+
+.chain-icon {
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 1rem;
+    width: 1.2rem;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.chain-meta {
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.block-nav-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.block-nav-controls button {
+    padding: 0.3rem 0.75rem;
+    font-size: 0.8rem;
+}
+
+.block-nav-index {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    margin: 0 0.5rem;
+}
+
 @media (max-width: 600px) {
     .kv-row { flex-direction: column; gap: 0.25rem; }
     .kv-key { min-width: 0; }
     .header-inner { flex-direction: column; align-items: stretch; }
     .connection input { width: 100%; }
+    .chain-nav-header { flex-direction: column; align-items: flex-start; }
+    .block-nav-controls { flex-wrap: wrap; }
 }

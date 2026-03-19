@@ -22,6 +22,16 @@
             Not connected. Start a gateway and click Connect.
         </div>
 
+        <section id="chainNav" class="card hidden">
+            <div class="chain-nav-header">
+                <h2>Chain Explorer</h2>
+                <div id="chainBreadcrumb" class="breadcrumb">
+                    <span class="breadcrumb-item active">Nexus</span>
+                </div>
+            </div>
+            <p class="subtle">Currently viewing: <strong id="currentChainLabel">Nexus Chain</strong></p>
+        </section>
+
         <section id="overview" class="card hidden">
             <h2>Network Overview</h2>
             <div class="stat-grid">
@@ -96,6 +106,12 @@
             </div>
         </section>
 
+        <section id="latticeTreeSection" class="card hidden">
+            <h2>Lattice Tree</h2>
+            <p class="subtle">All chains in the lattice hierarchy.</p>
+            <div id="latticeTree" class="lattice-tree"></div>
+        </section>
+
         <section id="mempoolSection" class="card hidden">
             <h2>Mempool</h2>
             <div class="stat-grid">
@@ -128,6 +144,43 @@
                 <div class="kv-row">
                     <span class="kv-key">Child Blocks</span>
                     <span class="kv-val" id="latestBlockChildren">—</span>
+                </div>
+            </div>
+        </section>
+
+        <section id="blockBrowser" class="card hidden">
+            <h2>Block Browser</h2>
+            <div class="block-nav-controls">
+                <button onclick="browseBlock('first')">First</button>
+                <button onclick="browseBlock('prev')">Prev</button>
+                <span class="block-nav-index">Block <strong id="browseBlockNum">—</strong> of <strong id="browseBlockTotal">—</strong></span>
+                <button onclick="browseBlock('next')">Next</button>
+                <button onclick="browseBlock('latest')">Latest</button>
+            </div>
+            <div id="blockBrowserDetail" class="kv-grid" style="margin-top: 1rem;">
+                <div class="kv-row">
+                    <span class="kv-key">Block Hash</span>
+                    <span class="kv-val mono" id="browseHash">—</span>
+                </div>
+                <div class="kv-row">
+                    <span class="kv-key">Block Index</span>
+                    <span class="kv-val" id="browseIndex">—</span>
+                </div>
+                <div class="kv-row">
+                    <span class="kv-key">Previous Block</span>
+                    <span class="kv-val mono" id="browsePrev">—</span>
+                </div>
+                <div class="kv-row">
+                    <span class="kv-key">On Main Chain</span>
+                    <span class="kv-val" id="browseMainChain">—</span>
+                </div>
+                <div class="kv-row">
+                    <span class="kv-key">Child Blocks</span>
+                    <span class="kv-val" id="browseChildren">—</span>
+                </div>
+                <div class="kv-row" id="browseChildChainsRow" class="hidden">
+                    <span class="kv-key">Child Chains</span>
+                    <span class="kv-val" id="browseChildChains">—</span>
                 </div>
             </div>
         </section>
@@ -197,6 +250,7 @@
                     <option value="lattice_peerCount">lattice_peerCount</option>
                     <option value="lattice_getMempoolInfo">lattice_getMempoolInfo</option>
                     <option value="lattice_getLatestBlock">lattice_getLatestBlock</option>
+                    <option value="lattice_getChildChains">lattice_getChildChains</option>
                     <option value="lattice_generateKeyPair">lattice_generateKeyPair</option>
                 </select>
                 <button onclick="sendRpc()">Send</button>
