@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lattice Explorer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <div class="header-inner">
+            <h1>Lattice Explorer</h1>
+            <div class="connection">
+                <input type="text" id="endpoint" value="http://127.0.0.1:8545" placeholder="Gateway URL">
+                <button id="connectBtn" onclick="connect()">Connect</button>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div id="disconnected" class="banner banner-warn">
+            Not connected. Start a gateway and click Connect.
+        </div>
+
+        <section id="overview" class="card hidden">
+            <h2>Network Overview</h2>
+            <div class="stat-grid">
+                <div class="stat">
+                    <span class="stat-label">Chain Height</span>
+                    <span class="stat-value" id="chainHeight">—</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Chain Tip</span>
+                    <span class="stat-value mono" id="chainTip">—</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Genesis Hash</span>
+                    <span class="stat-value mono" id="genesisHash">—</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Connected Peers</span>
+                    <span class="stat-value" id="peerCount">—</span>
+                </div>
+            </div>
+        </section>
+
+        <section id="nodeSection" class="card hidden">
+            <h2>Node Info</h2>
+            <div class="kv-grid">
+                <div class="kv-row">
+                    <span class="kv-key">Public Key</span>
+                    <span class="kv-val mono" id="publicKey">—</span>
+                </div>
+                <div class="kv-row">
+                    <span class="kv-key">Address</span>
+                    <span class="kv-val mono" id="nodeAddress">—</span>
+                </div>
+                <div class="kv-row">
+                    <span class="kv-key">Listen Port</span>
+                    <span class="kv-val" id="listenPort">—</span>
+                </div>
+            </div>
+        </section>
+
+        <section id="chainSpecSection" class="card hidden">
+            <h2>Chain Spec</h2>
+            <div class="kv-grid">
+                <div class="kv-row">
+                    <span class="kv-key">Directory</span>
+                    <span class="kv-val" id="specDirectory">—</span>
+                </div>
+                <div class="kv-row">
+                    <span class="kv-key">Target Block Time</span>
+                    <span class="kv-val" id="specBlockTime">—</span>
+                </div>
+                <div class="kv-row">
+                    <span class="kv-key">Max Txns / Block</span>
+                    <span class="kv-val" id="specMaxTxns">—</span>
+                </div>
+                <div class="kv-row">
+                    <span class="kv-key">Max State Growth</span>
+                    <span class="kv-val" id="specStateGrowth">—</span>
+                </div>
+                <div class="kv-row">
+                    <span class="kv-key">Initial Reward Exponent</span>
+                    <span class="kv-val" id="specRewardExp">—</span>
+                </div>
+                <div class="kv-row">
+                    <span class="kv-key">Halving Interval</span>
+                    <span class="kv-val" id="specHalving">—</span>
+                </div>
+                <div class="kv-row">
+                    <span class="kv-key">Initial Reward</span>
+                    <span class="kv-val" id="specReward">—</span>
+                </div>
+            </div>
+        </section>
+
+        <section id="mempoolSection" class="card hidden">
+            <h2>Mempool</h2>
+            <div class="stat-grid">
+                <div class="stat">
+                    <span class="stat-label">Pending Transactions</span>
+                    <span class="stat-value" id="mempoolCount">—</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Total Fees</span>
+                    <span class="stat-value" id="mempoolFees">—</span>
+                </div>
+            </div>
+        </section>
+
+        <section id="keygen" class="card hidden">
+            <h2>Key Generator</h2>
+            <p class="subtle">Generate a new keypair via the gateway.</p>
+            <button onclick="generateKey()">Generate Key Pair</button>
+            <div id="keyResult" class="hidden">
+                <div class="kv-grid">
+                    <div class="kv-row">
+                        <span class="kv-key">Public Key</span>
+                        <span class="kv-val mono" id="genPubKey">—</span>
+                    </div>
+                    <div class="kv-row">
+                        <span class="kv-key">Private Key</span>
+                        <span class="kv-val mono" id="genPrivKey">—</span>
+                    </div>
+                    <div class="kv-row">
+                        <span class="kv-key">Address</span>
+                        <span class="kv-val mono" id="genAddress">—</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="rpcConsole" class="card hidden">
+            <h2>RPC Console</h2>
+            <div class="console-row">
+                <select id="methodSelect">
+                    <option value="lattice_chainHeight">lattice_chainHeight</option>
+                    <option value="lattice_chainTip">lattice_chainTip</option>
+                    <option value="lattice_chainSpec">lattice_chainSpec</option>
+                    <option value="lattice_nodeInfo">lattice_nodeInfo</option>
+                    <option value="lattice_peerCount">lattice_peerCount</option>
+                    <option value="lattice_getMempoolInfo">lattice_getMempoolInfo</option>
+                    <option value="lattice_generateKeyPair">lattice_generateKeyPair</option>
+                </select>
+                <button onclick="sendRpc()">Send</button>
+            </div>
+            <pre id="rpcOutput"></pre>
+        </section>
+    </main>
+
+    <footer>
+        <span>Lattice Explorer</span>
+        <a href="https://treehauslabs.github.io/lattice-docs/">Documentation</a>
+        <a href="https://github.com/treehauslabs">GitHub</a>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
