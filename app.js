@@ -1,11 +1,11 @@
 let endpoint = "http://127.0.0.1:8545";
 let pollTimer = null;
 
-async function rpc(method) {
+async function rpc(method, params) {
     const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jsonrpc: "2.0", method, params: [], id: 1 }),
+        body: JSON.stringify({ jsonrpc: "2.0", method, params: params || [], id: 1 }),
     });
     const json = await res.json();
     if (json.error) throw new Error(json.error.message);
@@ -28,6 +28,8 @@ async function connect() {
         show("nodeSection");
         show("chainSpecSection");
         show("mempoolSection");
+        show("latestBlockSection");
+        show("blockLookup");
         show("keygen");
         show("rpcConsole");
         document.getElementById("connectBtn").textContent = "Connected";
@@ -40,10 +42,11 @@ async function connect() {
 }
 
 async function refresh() {
-    const [nodeInfo, chainSpec, mempool] = await Promise.all([
+    const [nodeInfo, chainSpec, mempool, latestBlock] = await Promise.all([
         rpc("lattice_nodeInfo"),
         rpc("lattice_chainSpec"),
         rpc("lattice_getMempoolInfo").catch(() => null),
+        rpc("lattice_getLatestBlock").catch(() => null),
     ]);
 
     set("chainHeight", nodeInfo.chainHeight.toLocaleString());
@@ -67,6 +70,13 @@ async function refresh() {
         set("mempoolCount", mempool.count.toLocaleString());
         set("mempoolFees", mempool.totalFees.toLocaleString());
     }
+
+    if (latestBlock) {
+        set("latestBlockHash", truncate(latestBlock.hash, 48));
+        set("latestBlockIndex", latestBlock.index.toLocaleString());
+        set("latestBlockPrev", latestBlock.previousBlockHash ? truncate(latestBlock.previousBlockHash, 48) : "Genesis");
+        set("latestBlockChildren", latestBlock.childBlockHashes.length > 0 ? latestBlock.childBlockHashes.length.toString() : "None");
+    }
 }
 
 async function generateKey() {
@@ -78,6 +88,23 @@ async function generateKey() {
         show("keyResult");
     } catch (e) {
         alert("Key generation failed: " + e.message);
+    }
+}
+
+async function lookupBlock() {
+    const hash = document.getElementById("blockHashInput").value.trim();
+    if (!hash) return;
+    try {
+        const result = await rpc("lattice_getBlock", [hash]);
+        set("lookupHash", truncate(result.hash, 48));
+        set("lookupIndex", result.index.toLocaleString());
+        set("lookupPrev", result.previousBlockHash ? truncate(result.previousBlockHash, 48) : "Genesis");
+        set("lookupMainChain", result.onMainChain ? "Yes" : "No");
+        set("lookupChildren", result.childBlockHashes.length > 0 ? result.childBlockHashes.length.toString() : "None");
+        show("blockLookupResult");
+    } catch (e) {
+        hide("blockLookupResult");
+        alert("Block not found: " + e.message);
     }
 }
 

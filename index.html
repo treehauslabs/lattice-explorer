@@ -110,6 +110,60 @@
             </div>
         </section>
 
+        <section id="latestBlockSection" class="card hidden">
+            <h2>Latest Block</h2>
+            <div class="kv-grid">
+                <div class="kv-row">
+                    <span class="kv-key">Block Hash</span>
+                    <span class="kv-val mono" id="latestBlockHash">—</span>
+                </div>
+                <div class="kv-row">
+                    <span class="kv-key">Block Index</span>
+                    <span class="kv-val" id="latestBlockIndex">—</span>
+                </div>
+                <div class="kv-row">
+                    <span class="kv-key">Previous Block</span>
+                    <span class="kv-val mono" id="latestBlockPrev">—</span>
+                </div>
+                <div class="kv-row">
+                    <span class="kv-key">Child Blocks</span>
+                    <span class="kv-val" id="latestBlockChildren">—</span>
+                </div>
+            </div>
+        </section>
+
+        <section id="blockLookup" class="card hidden">
+            <h2>Block Lookup</h2>
+            <div class="console-row">
+                <input type="text" id="blockHashInput" placeholder="Enter block hash..." style="flex:1; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:0.4rem 0.75rem; border-radius:6px; font-family:var(--mono); font-size:0.85rem;">
+                <button onclick="lookupBlock()">Lookup</button>
+            </div>
+            <div id="blockLookupResult" class="hidden">
+                <div class="kv-grid">
+                    <div class="kv-row">
+                        <span class="kv-key">Block Hash</span>
+                        <span class="kv-val mono" id="lookupHash">—</span>
+                    </div>
+                    <div class="kv-row">
+                        <span class="kv-key">Block Index</span>
+                        <span class="kv-val" id="lookupIndex">—</span>
+                    </div>
+                    <div class="kv-row">
+                        <span class="kv-key">Previous Block</span>
+                        <span class="kv-val mono" id="lookupPrev">—</span>
+                    </div>
+                    <div class="kv-row">
+                        <span class="kv-key">On Main Chain</span>
+                        <span class="kv-val" id="lookupMainChain">—</span>
+                    </div>
+                    <div class="kv-row">
+                        <span class="kv-key">Child Blocks</span>
+                        <span class="kv-val" id="lookupChildren">—</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <section id="keygen" class="card hidden">
             <h2>Key Generator</h2>
             <p class="subtle">Generate a new keypair via the gateway.</p>
@@ -142,6 +196,7 @@
                     <option value="lattice_nodeInfo">lattice_nodeInfo</option>
                     <option value="lattice_peerCount">lattice_peerCount</option>
                     <option value="lattice_getMempoolInfo">lattice_getMempoolInfo</option>
+                    <option value="lattice_getLatestBlock">lattice_getLatestBlock</option>
                     <option value="lattice_generateKeyPair">lattice_generateKeyPair</option>
                 </select>
                 <button onclick="sendRpc()">Send</button>
