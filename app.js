@@ -1,69 +1,105 @@
-let endpoint = "http://127.0.0.1:8545";
+let baseUrl = "http://127.0.0.1:8545";
 let pollTimer = null;
-let currentChainId = null;
-let currentBrowseIndex = 0;
-let currentChainHeight = 0;
+let chainHeight = 0;
+let browseIndex = 0;
 
-async function rpc(method, params) {
-    const res = await fetch(endpoint, {
+// --- API ---
+
+async function api(path, options) {
+    const res = await fetch(baseUrl + path, options);
+    if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(body || `HTTP ${res.status}`);
+    }
+    return res.json();
+}
+
+function getChainInfo() {
+    return api("/api/chain/info");
+}
+
+function getBalance(address) {
+    return api("/api/balance/" + encodeURIComponent(address));
+}
+
+function getBlock(id) {
+    return api("/api/block/" + encodeURIComponent(id));
+}
+
+function getReceipt(txCID) {
+    return api("/api/receipt/" + encodeURIComponent(txCID));
+}
+
+function postTransaction(tx) {
+    return api("/api/transaction", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jsonrpc: "2.0", method, params: params || [], id: 1 }),
+        body: JSON.stringify(tx),
     });
-    const json = await res.json();
-    if (json.error) throw new Error(json.error.message);
-    return json.result;
 }
 
-function chainRpc(method, params) {
-    const p = currentChainId ? [currentChainId, ...(params || [])] : (params || []);
-    return rpc(method, p);
-}
+// --- DOM helpers ---
 
 function show(id) { document.getElementById(id).classList.remove("hidden"); }
 function hide(id) { document.getElementById(id).classList.add("hidden"); }
-function set(id, val) { document.getElementById(id).textContent = val; }
-function truncate(s, n) { return s && s.length > n ? s.slice(0, n) + "..." : s; }
+function setText(id, val) { document.getElementById(id).textContent = val ?? "—"; }
+function truncate(s, n) { return s && s.length > n ? s.slice(0, n) + "\u2026" : s; }
 
-function makeClickableHash(hash, onclick) {
-    const span = document.createElement("span");
-    span.className = "clickable-hash";
-    span.textContent = truncate(hash, 48);
-    span.title = hash;
-    span.onclick = onclick;
-    return span;
+function renderKV(containerId, pairs) {
+    const grid = document.getElementById(containerId);
+    grid.innerHTML = "";
+    for (const [key, value, opts] of pairs) {
+        const row = document.createElement("div");
+        row.className = "kv-row";
+
+        const k = document.createElement("span");
+        k.className = "kv-key";
+        k.textContent = key;
+
+        const v = document.createElement("span");
+        v.className = "kv-val" + (opts?.mono ? " mono" : "");
+
+        if (opts?.clickable && value) {
+            const link = document.createElement("span");
+            link.className = "clickable-hash";
+            link.textContent = opts.truncate ? truncate(value, opts.truncate) : value;
+            link.title = value;
+            link.onclick = opts.clickable;
+            v.appendChild(link);
+        } else {
+            v.textContent = value ?? "—";
+        }
+
+        row.appendChild(k);
+        row.appendChild(v);
+        grid.appendChild(row);
+    }
 }
 
-function makeClickableChain(chainId, label) {
-    const span = document.createElement("span");
-    span.className = "clickable-hash";
-    span.textContent = label || truncate(chainId, 32);
-    span.title = chainId;
-    span.onclick = () => switchChain(chainId, label);
-    return span;
-}
+// --- Tabs ---
+
+document.querySelectorAll(".tab").forEach(btn => {
+    btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+        document.querySelectorAll(".tab-content").forEach(t => t.classList.add("hidden"));
+        btn.classList.add("active");
+        show("tab-" + btn.dataset.tab);
+    });
+});
+
+// --- Connect ---
 
 async function connect() {
-    endpoint = document.getElementById("endpoint").value.replace(/\/+$/, "");
+    baseUrl = document.getElementById("endpoint").value.replace(/\/+$/, "");
     if (pollTimer) clearInterval(pollTimer);
-    currentChainId = null;
 
     try {
-        await refresh();
+        await refreshChainInfo();
         hide("disconnected");
-        show("chainNav");
-        show("overview");
-        show("nodeSection");
-        show("chainSpecSection");
-        show("latticeTreeSection");
-        show("mempoolSection");
-        show("latestBlockSection");
-        show("blockBrowser");
-        show("blockLookup");
-        show("keygen");
-        show("rpcConsole");
+        show("tabs");
+        show("tab-chain");
         document.getElementById("connectBtn").textContent = "Connected";
-        pollTimer = setInterval(refresh, 5000);
+        pollTimer = setInterval(refreshChainInfo, 5000);
     } catch (e) {
         show("disconnected");
         document.getElementById("disconnected").textContent =
@@ -71,293 +107,237 @@ async function connect() {
     }
 }
 
-async function switchChain(chainId, label) {
-    currentChainId = chainId;
-    currentBrowseIndex = 0;
-    updateBreadcrumb();
-    document.getElementById("currentChainLabel").textContent =
-        chainId ? (label || truncate(chainId, 32)) : "Nexus Chain";
-    await refresh();
-}
+// --- Chain Info ---
 
-function updateBreadcrumb() {
-    const bc = document.getElementById("chainBreadcrumb");
-    bc.innerHTML = "";
+async function refreshChainInfo() {
+    const info = await getChainInfo();
 
-    const nexus = document.createElement("span");
-    nexus.className = "breadcrumb-item" + (currentChainId === null ? " active" : "");
-    nexus.textContent = "Nexus";
-    nexus.onclick = () => switchChain(null);
-    bc.appendChild(nexus);
+    chainHeight = info.height ?? info.chainHeight ?? 0;
+    setText("chainHeight", chainHeight.toLocaleString());
+    setText("chainTip", truncate(info.tip ?? info.chainTip ?? "", 48));
+    setText("genesis", truncate(info.genesis ?? info.genesisHash ?? "", 48));
+    setText("peers", info.peers ?? info.peerCount ?? "—");
 
-    if (currentChainId) {
-        const sep = document.createElement("span");
-        sep.className = "breadcrumb-sep";
-        sep.textContent = " / ";
-        bc.appendChild(sep);
+    const details = [];
+    const skip = new Set(["height", "chainHeight", "tip", "chainTip",
+        "genesis", "genesisHash", "peers", "peerCount"]);
+    for (const [key, val] of Object.entries(info)) {
+        if (skip.has(key)) continue;
+        if (val === null || val === undefined) continue;
+        const display = typeof val === "object" ? JSON.stringify(val) : String(val);
+        details.push([key, display, { mono: typeof val === "string" && val.length > 20 }]);
+    }
+    if (details.length > 0) {
+        renderKV("chainDetailsGrid", details);
+        show("chainDetails");
+    } else {
+        hide("chainDetails");
+    }
 
-        const child = document.createElement("span");
-        child.className = "breadcrumb-item active";
-        child.textContent = truncate(currentChainId, 24);
-        child.title = currentChainId;
-        bc.appendChild(child);
+    if (browseIndex === 0 && chainHeight > 0) {
+        browseIndex = chainHeight;
     }
 }
 
-async function refresh() {
-    const [nodeInfo, chainSpec, mempool, latestBlock] = await Promise.all([
-        chainRpc("lattice_nodeInfo"),
-        chainRpc("lattice_chainSpec"),
-        chainRpc("lattice_getMempoolInfo").catch(() => null),
-        chainRpc("lattice_getLatestBlock").catch(() => null),
-    ]);
+// --- Blocks ---
 
-    currentChainHeight = nodeInfo.chainHeight;
-    set("chainHeight", nodeInfo.chainHeight.toLocaleString());
-    set("chainTip", truncate(nodeInfo.chainTip, 48));
-    set("genesisHash", truncate(nodeInfo.genesisHash, 48));
-    set("peerCount", nodeInfo.peerCount);
-
-    set("publicKey", truncate(nodeInfo.publicKey, 48));
-    set("nodeAddress", nodeInfo.address);
-    set("listenPort", nodeInfo.listenPort);
-
-    set("specDirectory", chainSpec.directory);
-    set("specBlockTime", chainSpec.targetBlockTime + " ms");
-    set("specMaxTxns", chainSpec.maxTransactionsPerBlock.toLocaleString());
-    set("specStateGrowth", chainSpec.maxStateGrowth.toLocaleString());
-    set("specRewardExp", chainSpec.initialRewardExponent);
-    set("specHalving", chainSpec.halvingInterval.toLocaleString());
-    set("specReward", chainSpec.initialReward.toLocaleString());
-
-    if (mempool) {
-        set("mempoolCount", mempool.count.toLocaleString());
-        set("mempoolFees", mempool.totalFees.toLocaleString());
-    }
-
-    if (latestBlock) {
-        const hashEl = document.getElementById("latestBlockHash");
-        hashEl.innerHTML = "";
-        hashEl.appendChild(makeClickableHash(latestBlock.hash, () => {
-            document.getElementById("blockHashInput").value = latestBlock.hash;
-            lookupBlock();
-        }));
-
-        set("latestBlockIndex", latestBlock.index.toLocaleString());
-
-        const prevEl = document.getElementById("latestBlockPrev");
-        prevEl.innerHTML = "";
-        if (latestBlock.previousBlockHash) {
-            prevEl.appendChild(makeClickableHash(latestBlock.previousBlockHash, () => {
-                document.getElementById("blockHashInput").value = latestBlock.previousBlockHash;
-                lookupBlock();
-            }));
-        } else {
-            prevEl.textContent = "Genesis";
-        }
-
-        set("latestBlockChildren", latestBlock.childBlockHashes.length > 0 ? latestBlock.childBlockHashes.length.toString() : "None");
-
-        if (currentBrowseIndex === 0) {
-            currentBrowseIndex = latestBlock.index;
-        }
-    }
-
-    refreshLatticeTree();
-    refreshBlockBrowser();
-}
-
-async function refreshLatticeTree() {
-    const container = document.getElementById("latticeTree");
+async function lookupBlock() {
+    const id = document.getElementById("blockIdInput").value.trim();
+    if (!id) return;
     try {
-        const chains = await rpc("lattice_getChildChains", currentChainId ? [currentChainId] : []);
-        if (!chains || chains.length === 0) {
-            container.innerHTML = '<span class="subtle">No child chains found.</span>';
-            return;
+        const block = await getBlock(id);
+        displayBlock(block);
+    } catch (e) {
+        hide("blockResult");
+        alert("Block not found: " + e.message);
+    }
+}
+
+function displayBlock(block) {
+    const pairs = [];
+    const txs = [];
+
+    for (const [key, val] of Object.entries(block)) {
+        if (key === "transactions" || key === "txs") {
+            if (Array.isArray(val)) txs.push(...val);
+            continue;
         }
-        container.innerHTML = "";
-        for (const chain of chains) {
+        const isHash = typeof val === "string" && val.length >= 40;
+        const display = typeof val === "object" ? JSON.stringify(val) : String(val ?? "—");
+        const opts = { mono: isHash, truncate: isHash ? 48 : 0 };
+
+        if (isHash && key.toLowerCase().includes("block")) {
+            opts.clickable = () => {
+                document.getElementById("blockIdInput").value = val;
+                lookupBlock();
+            };
+        } else if (isHash && (key.toLowerCase().includes("tx") || key.toLowerCase().includes("cid"))) {
+            opts.clickable = () => {
+                switchToTab("transactions");
+                document.getElementById("txCidInput").value = val;
+                lookupReceipt();
+            };
+        }
+
+        pairs.push([key, display, opts]);
+    }
+
+    renderKV("blockDetailGrid", pairs);
+    show("blockResult");
+
+    const txItemsEl = document.getElementById("blockTxItems");
+    txItemsEl.innerHTML = "";
+    if (txs.length > 0) {
+        for (const tx of txs) {
+            const cid = typeof tx === "string" ? tx : (tx.cid ?? tx.hash ?? tx.id ?? JSON.stringify(tx));
             const row = document.createElement("div");
-            row.className = "chain-tree-item";
-
-            const icon = document.createElement("span");
-            icon.className = "chain-icon";
-            icon.textContent = chain.childCount > 0 ? "+" : "-";
-
-            const link = makeClickableChain(chain.chainId, chain.label || chain.chainId);
-
-            const meta = document.createElement("span");
-            meta.className = "chain-meta";
-            meta.textContent = `Height: ${chain.height} | Children: ${chain.childCount || 0}`;
-
-            row.appendChild(icon);
+            row.className = "tx-row";
+            const link = document.createElement("span");
+            link.className = "clickable-hash";
+            link.textContent = truncate(cid, 64);
+            link.title = cid;
+            link.onclick = () => {
+                switchToTab("transactions");
+                document.getElementById("txCidInput").value = cid;
+                lookupReceipt();
+            };
             row.appendChild(link);
-            row.appendChild(meta);
-            container.appendChild(row);
+
+            if (typeof tx === "object") {
+                if (tx.from || tx.to) {
+                    const meta = document.createElement("span");
+                    meta.className = "tx-meta";
+                    meta.textContent = [tx.from && `from ${truncate(tx.from, 16)}`, tx.to && `to ${truncate(tx.to, 16)}`].filter(Boolean).join(" ");
+                    row.appendChild(meta);
+                }
+                if (tx.amount !== undefined || tx.value !== undefined) {
+                    const amt = document.createElement("span");
+                    amt.className = "tx-amount";
+                    amt.textContent = (tx.amount ?? tx.value).toLocaleString();
+                    row.appendChild(amt);
+                }
+            }
+
+            txItemsEl.appendChild(row);
         }
-    } catch {
-        container.innerHTML = '<span class="subtle">Child chain discovery not available.</span>';
-    }
-}
-
-async function refreshBlockBrowser() {
-    if (currentChainHeight === 0) return;
-    set("browseBlockNum", currentBrowseIndex.toLocaleString());
-    set("browseBlockTotal", currentChainHeight.toLocaleString());
-
-    try {
-        const block = await chainRpc("lattice_getBlockByIndex", [currentBrowseIndex]);
-        renderBlockDetail(block, "browse");
-    } catch {
-        set("browseHash", "—");
-        set("browseIndex", "—");
-        set("browsePrev", "—");
-        set("browseMainChain", "—");
-        set("browseChildren", "—");
-    }
-}
-
-function renderBlockDetail(block, prefix) {
-    const hashEl = document.getElementById(prefix + "Hash");
-    hashEl.innerHTML = "";
-    hashEl.appendChild(makeClickableHash(block.hash, () => {
-        document.getElementById("blockHashInput").value = block.hash;
-        lookupBlock();
-    }));
-
-    set(prefix + "Index", block.index.toLocaleString());
-
-    const prevEl = document.getElementById(prefix + "Prev");
-    prevEl.innerHTML = "";
-    if (block.previousBlockHash) {
-        prevEl.appendChild(makeClickableHash(block.previousBlockHash, () => {
-            document.getElementById("blockHashInput").value = block.previousBlockHash;
-            lookupBlock();
-        }));
+        show("blockTxList");
     } else {
-        prevEl.textContent = "Genesis";
-    }
-
-    if (document.getElementById(prefix + "MainChain")) {
-        set(prefix + "MainChain", block.onMainChain ? "Yes" : "No");
-    }
-
-    const childrenEl = document.getElementById(prefix + "Children");
-    childrenEl.innerHTML = "";
-    if (block.childBlockHashes && block.childBlockHashes.length > 0) {
-        block.childBlockHashes.forEach((h, i) => {
-            if (i > 0) childrenEl.appendChild(document.createTextNode(", "));
-            childrenEl.appendChild(makeClickableHash(h, () => {
-                document.getElementById("blockHashInput").value = h;
-                lookupBlock();
-            }));
-        });
-    } else {
-        childrenEl.textContent = "None";
-    }
-
-    const childChainsEl = document.getElementById(prefix + "ChildChains");
-    if (childChainsEl && block.childChainIds && block.childChainIds.length > 0) {
-        const row = document.getElementById(prefix + "ChildChainsRow");
-        if (row) row.classList.remove("hidden");
-        childChainsEl.innerHTML = "";
-        block.childChainIds.forEach((id, i) => {
-            if (i > 0) childChainsEl.appendChild(document.createTextNode(", "));
-            childChainsEl.appendChild(makeClickableChain(id));
-        });
-    } else {
-        const row = document.getElementById(prefix + "ChildChainsRow");
-        if (row) row.classList.add("hidden");
+        hide("blockTxList");
     }
 }
 
 async function browseBlock(direction) {
     switch (direction) {
-        case "first":
-            currentBrowseIndex = 0;
-            break;
-        case "prev":
-            if (currentBrowseIndex > 0) currentBrowseIndex--;
-            break;
-        case "next":
-            if (currentBrowseIndex < currentChainHeight) currentBrowseIndex++;
-            break;
-        case "latest":
-            currentBrowseIndex = currentChainHeight;
-            break;
+        case "first": browseIndex = 0; break;
+        case "prev": if (browseIndex > 0) browseIndex--; break;
+        case "next": if (browseIndex < chainHeight) browseIndex++; break;
+        case "latest": browseIndex = chainHeight; break;
     }
-    await refreshBlockBrowser();
+    document.getElementById("browseLabel").textContent =
+        `Block ${browseIndex.toLocaleString()} of ${chainHeight.toLocaleString()}`;
+    try {
+        const block = await getBlock(String(browseIndex));
+        displayBlock(block);
+    } catch {
+        hide("blockResult");
+    }
 }
 
-async function generateKey() {
+// --- Balances ---
+
+async function lookupBalance() {
+    const address = document.getElementById("addressInput").value.trim();
+    if (!address) return;
     try {
-        const result = await rpc("lattice_generateKeyPair");
-        set("genPubKey", result.publicKey);
-        set("genPrivKey", result.privateKey);
-        set("genAddress", result.address);
-        show("keyResult");
+        const result = await getBalance(address);
+        setText("balAddress", address);
+        setText("balAmount", (result.balance ?? result.amount ?? "—").toLocaleString());
+        setText("balNonce", result.nonce ?? "—");
+        show("balanceResult");
     } catch (e) {
-        alert("Key generation failed: " + e.message);
+        hide("balanceResult");
+        alert("Balance lookup failed: " + e.message);
     }
 }
 
-async function lookupBlock() {
-    const hash = document.getElementById("blockHashInput").value.trim();
-    if (!hash) return;
+// --- Transactions ---
+
+async function lookupReceipt() {
+    const cid = document.getElementById("txCidInput").value.trim();
+    if (!cid) return;
     try {
-        const result = await rpc("lattice_getBlock", [hash]);
+        const receipt = await getReceipt(cid);
+        const pairs = [];
+        for (const [key, val] of Object.entries(receipt)) {
+            const isHash = typeof val === "string" && val.length >= 40;
+            const display = typeof val === "object" ? JSON.stringify(val) : String(val ?? "—");
+            const opts = { mono: isHash, truncate: isHash ? 48 : 0 };
 
-        const hashEl = document.getElementById("lookupHash");
-        hashEl.innerHTML = "";
-        hashEl.appendChild(makeClickableHash(result.hash, () => {
-            document.getElementById("blockHashInput").value = result.hash;
-            lookupBlock();
-        }));
-
-        set("lookupIndex", result.index.toLocaleString());
-
-        const prevEl = document.getElementById("lookupPrev");
-        prevEl.innerHTML = "";
-        if (result.previousBlockHash) {
-            prevEl.appendChild(makeClickableHash(result.previousBlockHash, () => {
-                document.getElementById("blockHashInput").value = result.previousBlockHash;
-                lookupBlock();
-            }));
-        } else {
-            prevEl.textContent = "Genesis";
-        }
-
-        set("lookupMainChain", result.onMainChain ? "Yes" : "No");
-
-        const childrenEl = document.getElementById("lookupChildren");
-        childrenEl.innerHTML = "";
-        if (result.childBlockHashes && result.childBlockHashes.length > 0) {
-            result.childBlockHashes.forEach((h, i) => {
-                if (i > 0) childrenEl.appendChild(document.createTextNode(", "));
-                childrenEl.appendChild(makeClickableHash(h, () => {
-                    document.getElementById("blockHashInput").value = h;
+            if (isHash && key.toLowerCase().includes("block")) {
+                opts.clickable = () => {
+                    switchToTab("blocks");
+                    document.getElementById("blockIdInput").value = val;
                     lookupBlock();
-                }));
-            });
-        } else {
-            childrenEl.textContent = "None";
-        }
+                };
+            }
 
-        show("blockLookupResult");
+            pairs.push([key, display, opts]);
+        }
+        renderKV("receiptGrid", pairs);
+        show("receiptResult");
     } catch (e) {
-        hide("blockLookupResult");
-        alert("Block not found: " + e.message);
+        hide("receiptResult");
+        alert("Receipt not found: " + e.message);
     }
 }
 
-async function sendRpc() {
-    const method = document.getElementById("methodSelect").value;
-    const output = document.getElementById("rpcOutput");
-    output.textContent = "Loading...";
-    try {
-        const result = await chainRpc(method);
-        output.textContent = JSON.stringify(result, null, 2);
-    } catch (e) {
-        output.textContent = "Error: " + e.message;
+async function sendTransaction() {
+    const banner = document.getElementById("txResultBanner");
+    banner.className = "hidden";
+
+    const tx = {
+        from: document.getElementById("txFrom").value.trim(),
+        to: document.getElementById("txTo").value.trim(),
+        amount: document.getElementById("txAmount").value.trim(),
+        fee: document.getElementById("txFee").value.trim(),
+        nonce: document.getElementById("txNonce").value.trim(),
+        data: document.getElementById("txData").value.trim() || undefined,
+        privateKey: document.getElementById("txPrivKey").value.trim(),
+    };
+
+    if (!tx.from || !tx.to || !tx.privateKey) {
+        banner.className = "banner banner-warn";
+        banner.textContent = "From, To, and Private Key are required.";
+        return;
     }
+
+    try {
+        const result = await postTransaction(tx);
+        const cid = result.cid ?? result.txCID ?? result.hash ?? JSON.stringify(result);
+        banner.className = "banner banner-ok";
+        banner.innerHTML = "";
+        banner.appendChild(document.createTextNode("Sent! CID: "));
+        const link = document.createElement("span");
+        link.className = "clickable-hash";
+        link.textContent = truncate(cid, 48);
+        link.title = cid;
+        link.onclick = () => {
+            document.getElementById("txCidInput").value = cid;
+            lookupReceipt();
+        };
+        banner.appendChild(link);
+    } catch (e) {
+        banner.className = "banner banner-warn";
+        banner.textContent = "Failed: " + e.message;
+    }
+}
+
+// --- Tab switching ---
+
+function switchToTab(name) {
+    document.querySelectorAll(".tab").forEach(t => {
+        t.classList.toggle("active", t.dataset.tab === name);
+    });
+    document.querySelectorAll(".tab-content").forEach(t => t.classList.add("hidden"));
+    show("tab-" + name);
 }

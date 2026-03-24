@@ -11,257 +11,166 @@
         <div class="header-inner">
             <h1>Lattice Explorer</h1>
             <div class="connection">
-                <input type="text" id="endpoint" value="http://127.0.0.1:8545" placeholder="Gateway URL">
+                <input type="text" id="endpoint" value="http://127.0.0.1:8545" placeholder="Node URL">
                 <button id="connectBtn" onclick="connect()">Connect</button>
             </div>
         </div>
     </header>
 
+    <nav id="tabs" class="tabs hidden">
+        <button class="tab active" data-tab="chain">Chain</button>
+        <button class="tab" data-tab="blocks">Blocks</button>
+        <button class="tab" data-tab="balances">Balances</button>
+        <button class="tab" data-tab="transactions">Transactions</button>
+    </nav>
+
     <main>
         <div id="disconnected" class="banner banner-warn">
-            Not connected. Start a gateway and click Connect.
+            Not connected. Enter a node URL and click Connect.
         </div>
 
-        <section id="chainNav" class="card hidden">
-            <div class="chain-nav-header">
-                <h2>Chain Explorer</h2>
-                <div id="chainBreadcrumb" class="breadcrumb">
-                    <span class="breadcrumb-item active">Nexus</span>
-                </div>
-            </div>
-            <p class="subtle">Currently viewing: <strong id="currentChainLabel">Nexus Chain</strong></p>
-        </section>
-
-        <section id="overview" class="card hidden">
-            <h2>Network Overview</h2>
-            <div class="stat-grid">
-                <div class="stat">
-                    <span class="stat-label">Chain Height</span>
-                    <span class="stat-value" id="chainHeight">—</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">Chain Tip</span>
-                    <span class="stat-value mono" id="chainTip">—</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">Genesis Hash</span>
-                    <span class="stat-value mono" id="genesisHash">—</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">Connected Peers</span>
-                    <span class="stat-value" id="peerCount">—</span>
-                </div>
-            </div>
-        </section>
-
-        <section id="nodeSection" class="card hidden">
-            <h2>Node Info</h2>
-            <div class="kv-grid">
-                <div class="kv-row">
-                    <span class="kv-key">Public Key</span>
-                    <span class="kv-val mono" id="publicKey">—</span>
-                </div>
-                <div class="kv-row">
-                    <span class="kv-key">Address</span>
-                    <span class="kv-val mono" id="nodeAddress">—</span>
-                </div>
-                <div class="kv-row">
-                    <span class="kv-key">Listen Port</span>
-                    <span class="kv-val" id="listenPort">—</span>
-                </div>
-            </div>
-        </section>
-
-        <section id="chainSpecSection" class="card hidden">
-            <h2>Chain Spec</h2>
-            <div class="kv-grid">
-                <div class="kv-row">
-                    <span class="kv-key">Directory</span>
-                    <span class="kv-val" id="specDirectory">—</span>
-                </div>
-                <div class="kv-row">
-                    <span class="kv-key">Target Block Time</span>
-                    <span class="kv-val" id="specBlockTime">—</span>
-                </div>
-                <div class="kv-row">
-                    <span class="kv-key">Max Txns / Block</span>
-                    <span class="kv-val" id="specMaxTxns">—</span>
-                </div>
-                <div class="kv-row">
-                    <span class="kv-key">Max State Growth</span>
-                    <span class="kv-val" id="specStateGrowth">—</span>
-                </div>
-                <div class="kv-row">
-                    <span class="kv-key">Initial Reward Exponent</span>
-                    <span class="kv-val" id="specRewardExp">—</span>
-                </div>
-                <div class="kv-row">
-                    <span class="kv-key">Halving Interval</span>
-                    <span class="kv-val" id="specHalving">—</span>
-                </div>
-                <div class="kv-row">
-                    <span class="kv-key">Initial Reward</span>
-                    <span class="kv-val" id="specReward">—</span>
-                </div>
-            </div>
-        </section>
-
-        <section id="latticeTreeSection" class="card hidden">
-            <h2>Lattice Tree</h2>
-            <p class="subtle">All chains in the lattice hierarchy.</p>
-            <div id="latticeTree" class="lattice-tree"></div>
-        </section>
-
-        <section id="mempoolSection" class="card hidden">
-            <h2>Mempool</h2>
-            <div class="stat-grid">
-                <div class="stat">
-                    <span class="stat-label">Pending Transactions</span>
-                    <span class="stat-value" id="mempoolCount">—</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">Total Fees</span>
-                    <span class="stat-value" id="mempoolFees">—</span>
-                </div>
-            </div>
-        </section>
-
-        <section id="latestBlockSection" class="card hidden">
-            <h2>Latest Block</h2>
-            <div class="kv-grid">
-                <div class="kv-row">
-                    <span class="kv-key">Block Hash</span>
-                    <span class="kv-val mono" id="latestBlockHash">—</span>
-                </div>
-                <div class="kv-row">
-                    <span class="kv-key">Block Index</span>
-                    <span class="kv-val" id="latestBlockIndex">—</span>
-                </div>
-                <div class="kv-row">
-                    <span class="kv-key">Previous Block</span>
-                    <span class="kv-val mono" id="latestBlockPrev">—</span>
-                </div>
-                <div class="kv-row">
-                    <span class="kv-key">Child Blocks</span>
-                    <span class="kv-val" id="latestBlockChildren">—</span>
-                </div>
-            </div>
-        </section>
-
-        <section id="blockBrowser" class="card hidden">
-            <h2>Block Browser</h2>
-            <div class="block-nav-controls">
-                <button onclick="browseBlock('first')">First</button>
-                <button onclick="browseBlock('prev')">Prev</button>
-                <span class="block-nav-index">Block <strong id="browseBlockNum">—</strong> of <strong id="browseBlockTotal">—</strong></span>
-                <button onclick="browseBlock('next')">Next</button>
-                <button onclick="browseBlock('latest')">Latest</button>
-            </div>
-            <div id="blockBrowserDetail" class="kv-grid" style="margin-top: 1rem;">
-                <div class="kv-row">
-                    <span class="kv-key">Block Hash</span>
-                    <span class="kv-val mono" id="browseHash">—</span>
-                </div>
-                <div class="kv-row">
-                    <span class="kv-key">Block Index</span>
-                    <span class="kv-val" id="browseIndex">—</span>
-                </div>
-                <div class="kv-row">
-                    <span class="kv-key">Previous Block</span>
-                    <span class="kv-val mono" id="browsePrev">—</span>
-                </div>
-                <div class="kv-row">
-                    <span class="kv-key">On Main Chain</span>
-                    <span class="kv-val" id="browseMainChain">—</span>
-                </div>
-                <div class="kv-row">
-                    <span class="kv-key">Child Blocks</span>
-                    <span class="kv-val" id="browseChildren">—</span>
-                </div>
-                <div class="kv-row" id="browseChildChainsRow" class="hidden">
-                    <span class="kv-key">Child Chains</span>
-                    <span class="kv-val" id="browseChildChains">—</span>
-                </div>
-            </div>
-        </section>
-
-        <section id="blockLookup" class="card hidden">
-            <h2>Block Lookup</h2>
-            <div class="console-row">
-                <input type="text" id="blockHashInput" placeholder="Enter block hash..." style="flex:1; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:0.4rem 0.75rem; border-radius:6px; font-family:var(--mono); font-size:0.85rem;">
-                <button onclick="lookupBlock()">Lookup</button>
-            </div>
-            <div id="blockLookupResult" class="hidden">
-                <div class="kv-grid">
-                    <div class="kv-row">
-                        <span class="kv-key">Block Hash</span>
-                        <span class="kv-val mono" id="lookupHash">—</span>
+        <!-- Chain Info Tab -->
+        <div id="tab-chain" class="tab-content hidden">
+            <section class="card">
+                <h2>Chain Status</h2>
+                <div class="stat-grid">
+                    <div class="stat">
+                        <span class="stat-label">Height</span>
+                        <span class="stat-value" id="chainHeight">—</span>
                     </div>
-                    <div class="kv-row">
-                        <span class="kv-key">Block Index</span>
-                        <span class="kv-val" id="lookupIndex">—</span>
+                    <div class="stat">
+                        <span class="stat-label">Chain Tip</span>
+                        <span class="stat-value mono" id="chainTip">—</span>
                     </div>
-                    <div class="kv-row">
-                        <span class="kv-key">Previous Block</span>
-                        <span class="kv-val mono" id="lookupPrev">—</span>
+                    <div class="stat">
+                        <span class="stat-label">Genesis</span>
+                        <span class="stat-value mono" id="genesis">—</span>
                     </div>
-                    <div class="kv-row">
-                        <span class="kv-key">On Main Chain</span>
-                        <span class="kv-val" id="lookupMainChain">—</span>
-                    </div>
-                    <div class="kv-row">
-                        <span class="kv-key">Child Blocks</span>
-                        <span class="kv-val" id="lookupChildren">—</span>
+                    <div class="stat">
+                        <span class="stat-label">Peers</span>
+                        <span class="stat-value" id="peers">—</span>
                     </div>
                 </div>
-            </div>
-        </section>
+            </section>
 
-        <section id="keygen" class="card hidden">
-            <h2>Key Generator</h2>
-            <p class="subtle">Generate a new keypair via the gateway.</p>
-            <button onclick="generateKey()">Generate Key Pair</button>
-            <div id="keyResult" class="hidden">
-                <div class="kv-grid">
-                    <div class="kv-row">
-                        <span class="kv-key">Public Key</span>
-                        <span class="kv-val mono" id="genPubKey">—</span>
+            <section class="card" id="chainDetails">
+                <h2>Chain Details</h2>
+                <div id="chainDetailsGrid" class="kv-grid"></div>
+            </section>
+        </div>
+
+        <!-- Blocks Tab -->
+        <div id="tab-blocks" class="tab-content hidden">
+            <section class="card">
+                <h2>Block Lookup</h2>
+                <div class="input-row">
+                    <input type="text" id="blockIdInput" placeholder="Block hash or height">
+                    <button onclick="lookupBlock()">Lookup</button>
+                </div>
+                <div class="browse-controls">
+                    <button onclick="browseBlock('first')">First</button>
+                    <button onclick="browseBlock('prev')">Prev</button>
+                    <span class="browse-label" id="browseLabel">—</span>
+                    <button onclick="browseBlock('next')">Next</button>
+                    <button onclick="browseBlock('latest')">Latest</button>
+                </div>
+            </section>
+
+            <section class="card hidden" id="blockResult">
+                <h2>Block Details</h2>
+                <div id="blockDetailGrid" class="kv-grid"></div>
+                <div id="blockTxList" class="tx-list hidden">
+                    <h3>Transactions</h3>
+                    <div id="blockTxItems"></div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Balances Tab -->
+        <div id="tab-balances" class="tab-content hidden">
+            <section class="card">
+                <h2>Address Balance</h2>
+                <div class="input-row">
+                    <input type="text" id="addressInput" placeholder="Enter address">
+                    <button onclick="lookupBalance()">Lookup</button>
+                </div>
+            </section>
+
+            <section class="card hidden" id="balanceResult">
+                <h2>Balance</h2>
+                <div class="stat-grid">
+                    <div class="stat">
+                        <span class="stat-label">Address</span>
+                        <span class="stat-value mono" id="balAddress">—</span>
                     </div>
-                    <div class="kv-row">
-                        <span class="kv-key">Private Key</span>
-                        <span class="kv-val mono" id="genPrivKey">—</span>
+                    <div class="stat">
+                        <span class="stat-label">Balance</span>
+                        <span class="stat-value" id="balAmount">—</span>
                     </div>
-                    <div class="kv-row">
-                        <span class="kv-key">Address</span>
-                        <span class="kv-val mono" id="genAddress">—</span>
+                    <div class="stat">
+                        <span class="stat-label">Nonce</span>
+                        <span class="stat-value" id="balNonce">—</span>
                     </div>
                 </div>
-            </div>
-        </section>
+            </section>
+        </div>
 
-        <section id="rpcConsole" class="card hidden">
-            <h2>RPC Console</h2>
-            <div class="console-row">
-                <select id="methodSelect">
-                    <option value="lattice_chainHeight">lattice_chainHeight</option>
-                    <option value="lattice_chainTip">lattice_chainTip</option>
-                    <option value="lattice_chainSpec">lattice_chainSpec</option>
-                    <option value="lattice_nodeInfo">lattice_nodeInfo</option>
-                    <option value="lattice_peerCount">lattice_peerCount</option>
-                    <option value="lattice_getMempoolInfo">lattice_getMempoolInfo</option>
-                    <option value="lattice_getLatestBlock">lattice_getLatestBlock</option>
-                    <option value="lattice_getChildChains">lattice_getChildChains</option>
-                    <option value="lattice_generateKeyPair">lattice_generateKeyPair</option>
-                </select>
-                <button onclick="sendRpc()">Send</button>
-            </div>
-            <pre id="rpcOutput"></pre>
-        </section>
+        <!-- Transactions Tab -->
+        <div id="tab-transactions" class="tab-content hidden">
+            <section class="card">
+                <h2>Transaction Receipt</h2>
+                <div class="input-row">
+                    <input type="text" id="txCidInput" placeholder="Transaction CID">
+                    <button onclick="lookupReceipt()">Lookup</button>
+                </div>
+            </section>
+
+            <section class="card hidden" id="receiptResult">
+                <h2>Receipt</h2>
+                <div id="receiptGrid" class="kv-grid"></div>
+            </section>
+
+            <section class="card">
+                <h2>Send Transaction</h2>
+                <div class="form-grid">
+                    <label>
+                        <span class="form-label">From</span>
+                        <input type="text" id="txFrom" placeholder="Sender address">
+                    </label>
+                    <label>
+                        <span class="form-label">To</span>
+                        <input type="text" id="txTo" placeholder="Recipient address">
+                    </label>
+                    <label>
+                        <span class="form-label">Amount</span>
+                        <input type="text" id="txAmount" placeholder="0">
+                    </label>
+                    <label>
+                        <span class="form-label">Fee</span>
+                        <input type="text" id="txFee" placeholder="0">
+                    </label>
+                    <label>
+                        <span class="form-label">Nonce</span>
+                        <input type="text" id="txNonce" placeholder="0">
+                    </label>
+                    <label>
+                        <span class="form-label">Data (optional)</span>
+                        <input type="text" id="txData" placeholder="Hex-encoded data">
+                    </label>
+                    <label>
+                        <span class="form-label">Private Key</span>
+                        <input type="password" id="txPrivKey" placeholder="Signing key">
+                    </label>
+                </div>
+                <button class="btn-primary" onclick="sendTransaction()">Send</button>
+                <div id="txResultBanner" class="hidden"></div>
+            </section>
+        </div>
     </main>
 
     <footer>
         <span>Lattice Explorer</span>
-        <a href="https://treehauslabs.github.io/lattice-docs/">Documentation</a>
+        <a href="https://treehauslabs.github.io/lattice-docs/">Docs</a>
         <a href="https://github.com/treehauslabs">GitHub</a>
     </footer>
 
